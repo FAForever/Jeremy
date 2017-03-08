@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3>Find A User</h3>
+<br>
+<form method="POST" action="/users">
+Type the username here:
+<input type="text" name="user">
+<button class="btn btn-success">Submit</button><br>
+(If you type only part of the name, it will try to guess who you meant)
+</form>
+<br><br>
+{% endblock %}

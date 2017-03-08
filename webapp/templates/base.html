@@ -1,0 +1,38 @@
+<html>
+<head>
+<script
+  src="https://code.jquery.com/jquery-3.1.1.slim.min.js"
+  integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc="
+  crossorigin="anonymous"></script>
+<title>{% if title %}title{% else %}Jeremy{% endif %}</title>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+<style>
+td {
+  padding: 5px;
+}
+table {
+  background-color: #f0fff0;
+}
+</style>
+
+</head>
+
+
+<body style="background-color: #fbd">
+<div style="padding-bottom: 700; background-color: #dce" class="container">
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <ul class="nav navbar-nav">
+      <li class="active"><a href="/">Home</a></li>
+      <li><a href="/users">Users</a></li>
+      <li><a href="/avatars">Avatars</a></li>
+    </ul>
+  </div>
+</nav>
+<br>
+{% block content %}
+{% endblock %}
+</div>
+</body>
+
+</html>

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3>Avatar List for: {{login}} (ID: {{uid}})</h3>
+<br><br>
+<table border=1>
+  <thead>
+    <td>Avatar</td>
+    <td>ID</td>
+    <td>Tooltip</td>
+    <td>Avatar Details</td>
+    <td>Remove Avatar</td>
+  </thead>
+  <tbody>{% for row in avatar_list %}
+    <tr>
+      <td><img src="{{row[0]}}"></img></td>
+      <td>{{row[1]}}</td>
+      <td>{{row[2]}}</td>
+      <td><a class="btn btn-primary" href="/avatar_details?id={{row[1]}}" style="margin: 5px 5px 5px 5px;">Details</a></td>
+      <td><a class="btn btn-danger" href="/remove_avatar?aid={{row[1]}}&uid={{uid}}&callback=u" style="margin: 5px 5px 5px 5px;">Remove</a></td>
+    </tr>
+  {% endfor %}</tbody>
+</table>
+<br><br><br>
+<h2>Big Red Button Of Death</h2>
+<a class="btn btn-danger" href="/delete_user?id={{uid}}"><h4>DEATH</h4></a>
+<h3>This button will permanently remove this user from existence, you have been warned...</h3>
+{% endblock %}

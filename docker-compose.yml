@@ -1,0 +1,9 @@
+version: '1'
+
+services:
+  jeremy:
+    build: ./
+    env_file:
+      - .env
+    ports:
+      - "80:5000"

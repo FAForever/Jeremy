@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3>Avatar List</h3>
+<br><br>
+<table border=1>
+  <thead>
+    <td>Avatar</td>
+    <td>ID</td>
+    <td>Tooltip</td>
+    <td>User Count</td>
+    <td>Avatar Details</td>
+  </thead>
+  <tbody>{% for row in avatar_list %}
+    <tr>
+      <td><img src="{{row[0]}}"></img></td>
+      <td>{{row[1]}}</td>
+      <td>{{row[2]}}</td>
+      <td>{{row[3]}}</td>
+      <td><a class="btn btn-primary" href="/avatar_details?id={{row[1]}}" style="margin: 5px 5px 5px 5px;">Details</a></td>
+    </tr>
+  {% endfor %}</tbody>
+</table>
+{% endblock %}

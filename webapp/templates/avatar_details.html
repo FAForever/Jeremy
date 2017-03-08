@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h3>Avatar Details</h3>
+<br>
+<h4><img src="{{avatar[0]}}"></img>&nbsp;&nbsp;({{avatar[1]}}) - {{avatar[2]}}</h4>
+<br><br>
+
+<h4>Give this avatar to new users</h4>
+<form method="POST" action="/add_avatar?id={{avatar[1]}}">
+Usernames go here:
+<input type="text" name="users">
+<button class="btn btn-success">Submit</button><br>
+(You can enter multiple names seperated by spaces)
+</form>
+<br><br>
+<table border=1>
+  <thead>
+    <td>Username</td>
+    <td>ID</td>
+    <td>Date Given</td>
+    <td>Expiry Date</td>
+    <td>User Details</td>
+    <td>Remove Avatar</td>
+  </thead>
+  <tbody>{% for row in user_list %}
+    <tr>
+      <td>{{row[0]}}</td>
+      <td>{{row[1]}}</td>
+      <td>{{row[2]}}</td>
+      <td>{{row[3]}}</td>
+      <td><a class="btn btn-primary" href="/user_details?id={{row[1]}}" style="margin: 5px 5px 5px 5px;">Details</a></td>
+      <td><a class="btn btn-danger" href="/remove_avatar?uid={{row[1]}}&aid={{avatar[1]}}&callback=a" style="margin: 5px 5px 5px 5px;">Remove</a></td>
+    </tr>
+  {% endfor %}</tbody>
+</table>
+<br><br><br>
+<h2>Big Red Button Of Death</h2>
+<a class="btn btn-danger" href="/delete_avatar?id={{avatar[1]}}"><h4>DEATH</h4></a>
+<h3>This button will permanently remove this avatar from existence, you have been warned...</h3>
+{% endblock %}
