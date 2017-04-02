@@ -3,6 +3,9 @@
     <title>Woopsie!</title>
   </head>
   <body>
-    Something went wrong, please try again <a href="{{site}}">here</a>.
+    Something went wrong, please try again <a href="{{site}}">here</a>.<br>
+    {% if error is defined and error is not none %}
+    {{error}}
+    {% endif %}
   </body>
 </html>

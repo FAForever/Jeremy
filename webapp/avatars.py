@@ -3,6 +3,7 @@ from webapp import app
 from flask import session, redirect, request, render_template
 import json, os, urllib, random
 from functools import wraps
+import requests
 site = os.environ['SITE']
 api = os.environ['API']
 
@@ -15,6 +16,9 @@ faforever = oauth.remote_app('faforever',
     access_token_url=api+"/oauth/token",
     request_token_params={"scope":"public_profile"}
 )
+
+def render_api_errors(errors):
+    return "<br>\n".join(["Error {code}: {detail}".format(**error) for error in errors])
 
 @app.route("/")
 def root():
@@ -184,6 +188,58 @@ def deleteavatar(token):
     resp = urllib.request.urlopen(req,data=urllib.parse.urlencode({"id":aid}).encode("utf8"))
     return redirect("/avatars")
 
+@app.route('/avatar_upload', methods=["GET"])
+@get_token
+def avatar_upload_get(token):
+    return render_template("upload.html")
+
+@app.route('/avatar_upload', methods=["POST"])
+@get_token
+def avatar_upload_post(token):
+    if 'file' in request.files:
+        file = request.files['file']
+    else:
+        file = None
+
+    if file is None or file.filename == '':
+        return render_template("fail.html", site="/avatar_upload", error="You need to upload a file.")
+
+    if 'tooltip' in request.form:
+        tooltip = request.form.get('tooltip')
+    else:
+        tooltip = None
+
+    if tooltip is None or tooltip == '' or len(tooltip) > 250:
+        return render_template("fail.html", site="/avatar_upload", error="You need to set a tooltip that's between 1 and 250 characters.")
+
+    resp = requests.put(
+            api+"/avatar",
+            files={
+                'file': (file.filename, file),
+                },
+            data={
+                'tooltip': tooltip,
+            },
+            headers={
+                "Authorization":"Bearer " + token,
+                }
+            )
+    if resp.status_code == 200:
+        data = resp.json()
+        if not 'id' in data:
+            return render_template("fail.html", site="/avatar_upload", error="The API was happy, but we can't deal with the response.")
+        else:
+            return redirect('avatar_details?id={}'.format(data['id']))
+    else:
+        try:
+            data = resp.json()
+            if 'errors' in data:
+                return render_template("fail.html", site="/avatar_upload", error="The API was not happy. Errors:\n{}".format(render_api_errors(data['errors'])))
+        except:
+            pass
+        return render_template("fail.html", site="/avatar_upload", error="The API was not happy. Return code: {} - Return message: {}".format(error.code, error.reason))
+
+
 @app.route('/delete_user',methods=["GET"])
 @get_token
 def deleteuser(token):
@@ -191,4 +247,5 @@ def deleteuser(token):
 
 @app.route('/fail')
 def fail():
-    return render_template("fail.html",site=site)
+    return render_template("fail.html",site=site,error=None)
+

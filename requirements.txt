@@ -1,2 +1,3 @@
 Flask==0.11
 Flask-OAuthlib==0.9.3
+requests
