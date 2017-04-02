@@ -70,16 +70,20 @@ def users(token):
 @get_token
 def users_post(token):
     user = request.form.get("user").strip()
+    method = request.form.get("submit")
     if len(user) == 0:
         return redirect("/users")
     req = urllib.request.Request(url=api+"/players/prefix/"+user,method="GET")
     resp = urllib.request.urlopen(req)
     datas = json.loads(resp.read().decode("utf8"))["data"]
-    for d in datas:
-        if d["attributes"]["login"].lower() == user.lower():
-            return redirect("/user_details?id="+d["attributes"]["id"])
-    if len(datas) > 0:
-        return redirect("/user_details?id="+datas[0]["attributes"]["id"])
+    if method == 'go':
+        for d in datas:
+            if d["attributes"]["login"].lower() == user.lower():
+                return redirect("/user_details?id="+d["attributes"]["id"])
+        if len(datas) > 0:
+            return redirect("/user_details?id="+datas[0]["attributes"]["id"])
+    elif method == 'search':
+        return render_template("user_list.html", users=[data["attributes"] for data in datas])
     return redirect("/users")
 
 @app.route('/avatar_details',methods=["GET"])
