@@ -23,10 +23,16 @@ table {
 <nav class="navbar navbar-default">
   <div class="container-fluid">
     <ul class="nav navbar-nav">
-      <li class="active"><a href="/">Home</a></li>
-      <li><a href="/users">Users</a></li>
-      <li><a href="/avatars">Avatars</a></li>
-      <li><a href="/avatar_upload">Avatar Upload</a></li>
+{%- for url, name in [('/', 'Home'), ('/users', 'Users'), ('/avatars', 'Avatars'), ('/avatar_upload', 'Avatar Upload')] %}
+      <li{% if request.path == url %} class="active"{% endif %}><a href="{{url}}">{{name}}</a></li>
+{%- endfor %}
+    </ul>
+    <ul class="nav navbar-nav" style="float: right">
+{% if token_expires_in is defined and token_expires_in is not none %}
+    <li>You are logged in (session time remaining: {{token_expires_in}})</li>
+{% else %}
+    <li><a href="/login">Please Log In.</a></li>
+{% endif %}
     </ul>
   </div>
 </nav>

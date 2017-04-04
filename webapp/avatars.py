@@ -3,7 +3,9 @@ from webapp import app
 from flask import session, redirect, request, render_template
 import json, os, urllib, random
 from functools import wraps
+import time
 import requests
+import inspect
 site = os.environ['SITE']
 api = os.environ['API']
 
@@ -20,38 +22,54 @@ faforever = oauth.remote_app('faforever',
 def render_api_errors(errors):
     return "<br>\n".join(["Error {code}: {detail}".format(**error) for error in errors])
 
+@app.route('/oauth',methods=["GET","POST"])
+def oauth_return():
+    resp = faforever.authorized_response()
+    if resp is None:
+        return redirect("/fail")
+    session['access_token'] = resp['access_token']
+    session['refresh_token'] = resp['refresh_token']
+    session['token_expires_at'] = int(time.time()) + resp['expires_in']
+
+    return redirect("/avatars")
+
+def get_token(required=True):
+    def decorator(f):
+        @wraps(f)
+        def df(*args, **kwargs):
+            # See if there is an OAuth token for this user
+            token = session.get("access_token")
+            if not token and required:
+                # Return to home page, user can login from there
+                return redirect("/")
+            return f(token, *args, **kwargs)
+#        df.__name__ = f.__name__
+        return df
+#    decorator.__name__ = inspect.stack()[1][3]
+    return decorator
+
+def render_with_session(template, **kwargs):
+    token_expires_in = None
+    if 'token_expires_at' in session:
+        token_expires_in = session['token_expires_at'] - int(time.time())
+        if token_expires_in > 0:
+            token_expires_in = time.strftime('%H:%M:%S', time.gmtime(token_expires_in))
+        else:
+            token_expires_in = None
+    return render_template(template, token_expires_in=token_expires_in, **kwargs)
+
 @app.route("/")
-def root():
-    return render_template("home.html")
+@get_token(required=False)
+def root(token):
+    return render_with_session("home.html")
 
 @app.route("/login")
 def login():
     return faforever.authorize(callback=site+"/oauth")
 
 
-@app.route('/oauth',methods=["GET","POST"])
-def oauth_return():
-    resp = faforever.authorized_response()
-    if resp is None:
-        return redirect("/fail")
-    token = resp["access_token"]
-    session['token'] = token
-
-    return redirect("/avatars")
-
-def get_token(f):
-    @wraps(f)
-    def df(*args, **kwargs):
-        # See if there is an OAuth token for this user
-        token = session.get("token")
-        if not token:
-            # Return to home page, user can login from there
-            return redirect("/")
-        return f(token, *args, **kwargs)
-    return df
-    
 @app.route('/avatars',methods=["GET"])
-@get_token
+@get_token()
 def avatars(token):
     avatar_list = []
     req = urllib.request.Request(url=api+"/avatar")
@@ -62,16 +80,16 @@ def avatars(token):
         avatar_list.append((r["url"],r["id"],r["tooltip"],"?"))
 
     avatar_list = sorted(avatar_list,key=lambda x: x[1])
-    return render_template("avatar_list.html",avatar_list=avatar_list)
-    
+    return render_with_session("avatar_list.html",avatar_list=avatar_list)
+
 
 @app.route('/users',methods=["GET"])
-@get_token
+@get_token()
 def users(token):
-    return render_template("find_user.html")
+    return render_with_session("find_user.html")
 
 @app.route('/users',methods=["POST"])
-@get_token
+@get_token()
 def users_post(token):
     user = request.form.get("user").strip()
     method = request.form.get("submit")
@@ -87,11 +105,11 @@ def users_post(token):
         if len(datas) > 0:
             return redirect("/user_details?id="+datas[0]["attributes"]["id"])
     elif method == 'search':
-        return render_template("user_list.html", users=[data["attributes"] for data in datas])
+        return render_with_session("user_list.html", users=[data["attributes"] for data in datas])
     return redirect("/users")
 
 @app.route('/avatar_details',methods=["GET"])
-@get_token
+@get_token()
 def avatardetails(token):
     user_list = []
     aid = request.args.get("id")
@@ -122,10 +140,10 @@ def avatardetails(token):
 
         user_list.append((u["login"],u["id"],creation,expiry))
 
-    return render_template("avatar_details.html",user_list=user_list,avatar=(avatar["url"],avatar["id"],avatar["tooltip"]))
+    return render_with_session("avatar_details.html",user_list=user_list,avatar=(avatar["url"],avatar["id"],avatar["tooltip"]))
 
 @app.route('/user_details',methods=["GET"])
-@get_token
+@get_token()
 def userdetails(token):
     avatar_list = []
     uid = request.args.get("id")
@@ -145,10 +163,10 @@ def userdetails(token):
     login = json.loads(resp.read().decode("utf8"))["data"]["attributes"]["login"]
 
     avatar_list = sorted(avatar_list,key=lambda x: x[1])
-    return render_template("user_details.html",avatar_list=avatar_list,uid=uid,login=login)
+    return render_with_session("user_details.html",avatar_list=avatar_list,uid=uid,login=login)
 
 @app.route('/remove_avatar',methods=["GET"])
-@get_token
+@get_token()
 def removeavatar(token):
     callback = request.args.get("callback")
     aid = request.args.get("aid")
@@ -165,7 +183,7 @@ def removeavatar(token):
     return redirect("/fail")
 
 @app.route('/add_avatar',methods=["POST"])
-@get_token
+@get_token()
 def addavatar(token):
     aid = request.args.get("id")
     users = request.form.get("users").split(" ")
@@ -181,7 +199,7 @@ def addavatar(token):
     return redirect("/avatar_details?id="+str(aid))
 
 @app.route('/delete_avatar',methods=["GET"])
-@get_token
+@get_token()
 def deleteavatar(token):
     aid = request.args.get("id")
     req = urllib.request.Request(url=api+"/avatar",method="DELETE",headers={"Authorization":"Bearer " + token})
@@ -189,12 +207,12 @@ def deleteavatar(token):
     return redirect("/avatars")
 
 @app.route('/avatar_upload', methods=["GET"])
-@get_token
+@get_token()
 def avatar_upload_get(token):
-    return render_template("upload.html")
+    return render_with_session("upload.html")
 
 @app.route('/avatar_upload', methods=["POST"])
-@get_token
+@get_token()
 def avatar_upload_post(token):
     if 'file' in request.files:
         file = request.files['file']
@@ -202,7 +220,7 @@ def avatar_upload_post(token):
         file = None
 
     if file is None or file.filename == '':
-        return render_template("fail.html", site="/avatar_upload", error="You need to upload a file.")
+        return render_with_session("fail.html", site="/avatar_upload", error="You need to upload a file.")
 
     if 'tooltip' in request.form:
         tooltip = request.form.get('tooltip')
@@ -210,7 +228,7 @@ def avatar_upload_post(token):
         tooltip = None
 
     if tooltip is None or tooltip == '' or len(tooltip) > 250:
-        return render_template("fail.html", site="/avatar_upload", error="You need to set a tooltip that's between 1 and 250 characters.")
+        return render_with_session("fail.html", site="/avatar_upload", error="You need to set a tooltip that's between 1 and 250 characters.")
 
     resp = requests.put(
             api+"/avatar",
@@ -227,25 +245,25 @@ def avatar_upload_post(token):
     if resp.status_code == 200:
         data = resp.json()
         if not 'id' in data:
-            return render_template("fail.html", site="/avatar_upload", error="The API was happy, but we can't deal with the response.")
+            return render_with_session("fail.html", site="/avatar_upload", error="The API was happy, but we can't deal with the response.")
         else:
             return redirect('avatar_details?id={}'.format(data['id']))
     else:
         try:
             data = resp.json()
             if 'errors' in data:
-                return render_template("fail.html", site="/avatar_upload", error="The API was not happy. Errors:\n{}".format(render_api_errors(data['errors'])))
+                return render_with_session("fail.html", site="/avatar_upload", error="The API was not happy. Errors:\n{}".format(render_api_errors(data['errors'])))
         except:
             pass
-        return render_template("fail.html", site="/avatar_upload", error="The API was not happy. Return code: {} - Return message: {}".format(error.code, error.reason))
+        return render_with_session("fail.html", site="/avatar_upload", error="The API was not happy. Return code: {} - Return message: {}".format(error.code, error.reason))
 
 
 @app.route('/delete_user',methods=["GET"])
-@get_token
+@get_token()
 def deleteuser(token):
-    return render_template("delete_user.html")
+    return render_with_session("delete_user.html")
 
 @app.route('/fail')
 def fail():
-    return render_template("fail.html",site=site,error=None)
+    return render_with_session("fail.html",site=site,error=None)
 
