@@ -57,6 +57,33 @@ def render_with_session(template, **kwargs):
             token_expires_in = None
     return render_template(template, token_expires_in=token_expires_in, **kwargs)
 
+def api_wrapper(api_response, site, response_path=None):
+    """
+    Handles an api response.
+    If the api call was successful (response 2xx or 3xx), returns api json data
+    or redirects to resource returned by api (if response_path is set).
+    If the api call was not successful, renders error.
+    """
+    if api_response.status_code >= 200 and api_response.status_code < 400:
+        data = api_response.json()
+        if response_path is not None:
+            if 'id' in data:
+                return redirect('{}?id={}'.format(response_path, data['id']))
+            else:
+                return render_with_session("fail.html", site=site, error="The API was happy, but we can't deal with the api_response.")
+        else:
+            return data
+    else:
+        try:
+            data = api_response.json()
+            if 'errors' in data:
+                return render_with_session("fail.html", site="/avatar_upload", errors=data['errors'])
+        except:
+            pass
+        return render_with_session("fail.html", site=site, error="The API was not happy. Return code: {} - Return message: {}".format(error.code, error.reason))
+
+
+# Routes
 @app.route("/")
 @get_token(required=False)
 def root(token):
@@ -68,7 +95,7 @@ def login():
 
 
 @app.route('/avatars',methods=["GET"])
-@get_token()
+@get_token(required=False)
 def avatars(token):
     avatar_list = []
     req = urllib.request.Request(url=api+"/avatar")
@@ -83,24 +110,40 @@ def avatars(token):
 
 
 @app.route('/users',methods=["GET"])
-@get_token()
+@get_token(required=False)
 def users(token):
+    """
+    The user search form
+    """
     return render_with_session("find_user.html")
 
 @app.route('/users',methods=["POST"])
 @get_token()
 def users_post(token):
+    """
+    The user search function
+
+    params:
+      - form.user: Username prefix
+      - form.method: "search" for search result listing, "go" for first found user
+    """
+
+    # process args
     user = request.form.get("user").strip()
     method = request.form.get("submit")
     if len(user) == 0:
         return redirect("/users")
+
+    # perform prefix search
     req = urllib.request.Request(url=api+"/players/prefix/"+user,method="GET")
     resp = urllib.request.urlopen(req)
     datas = json.loads(resp.read().decode("utf8"))["data"]
     if method == 'go':
+        # Try to find exact match first
         for d in datas:
             if d["attributes"]["login"].lower() == user.lower():
                 return redirect("/user_details?id="+d["attributes"]["id"])
+        # Return first match
         if len(datas) > 0:
             return redirect("/user_details?id="+datas[0]["attributes"]["id"])
     elif method == 'search':
@@ -108,7 +151,7 @@ def users_post(token):
     return redirect("/users")
 
 @app.route('/avatar_details',methods=["GET"])
-@get_token()
+@get_token(required=False)
 def avatardetails(token):
     user_list = []
     aid = request.args.get("id")
@@ -241,21 +284,7 @@ def avatar_upload_post(token):
                 "Authorization":"Bearer " + token,
                 }
             )
-    if resp.status_code == 200:
-        data = resp.json()
-        if not 'id' in data:
-            return render_with_session("fail.html", site="/avatar_upload", error="The API was happy, but we can't deal with the response.")
-        else:
-            return redirect('avatar_details?id={}'.format(data['id']))
-    else:
-        try:
-            data = resp.json()
-            if 'errors' in data:
-                return render_with_session("fail.html", site="/avatar_upload", errors=data['errors'])
-        except:
-            pass
-        return render_with_session("fail.html", site="/avatar_upload", error="The API was not happy. Return code: {} - Return message: {}".format(error.code, error.reason))
-
+    return api_wrapper(resp, '/avatar_upload', '/avatar_details')
 
 @app.route('/delete_user',methods=["GET"])
 @get_token()
