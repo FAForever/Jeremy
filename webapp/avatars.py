@@ -9,6 +9,8 @@ import inspect
 site = os.environ['SITE']
 api = os.environ['API']
 
+
+# OAuth setup
 oauth = OAuth(app)
 
 faforever = oauth.remote_app('faforever',
@@ -19,9 +21,7 @@ faforever = oauth.remote_app('faforever',
     request_token_params={"scope":"public_profile"}
 )
 
-def render_api_errors(errors):
-    return "<br>\n".join(["Error {code}: {detail}".format(**error) for error in errors])
-
+# Decorators
 @app.route('/oauth',methods=["GET","POST"])
 def oauth_return():
     resp = faforever.authorized_response()
@@ -43,11 +43,10 @@ def get_token(required=True):
                 # Return to home page, user can login from there
                 return redirect("/")
             return f(token, *args, **kwargs)
-#        df.__name__ = f.__name__
         return df
-#    decorator.__name__ = inspect.stack()[1][3]
     return decorator
 
+# Render wrappers
 def render_with_session(template, **kwargs):
     token_expires_in = None
     if 'token_expires_at' in session:
@@ -252,7 +251,7 @@ def avatar_upload_post(token):
         try:
             data = resp.json()
             if 'errors' in data:
-                return render_with_session("fail.html", site="/avatar_upload", error="The API was not happy. Errors:\n{}".format(render_api_errors(data['errors'])))
+                return render_with_session("fail.html", site="/avatar_upload", errors=data['errors'])
         except:
             pass
         return render_with_session("fail.html", site="/avatar_upload", error="The API was not happy. Return code: {} - Return message: {}".format(error.code, error.reason))
@@ -265,5 +264,5 @@ def deleteuser(token):
 
 @app.route('/fail')
 def fail():
-    return render_with_session("fail.html",site=site,error=None)
+    return render_with_session("fail.html",site=site)
 

@@ -4,8 +4,12 @@
   </head>
   <body>
     Something went wrong, please try again <a href="{{site}}">here</a>.<br>
-    {% if error is defined and error is not none %}
-    {{error}}
+    {% if errors is defined and errors is not none %}
+    <br>
+    The API was not happy. API errors:<br>
+    {% for error in errors %}
+    {{ error.get('title', '[No Title]')}}: Code {{error.get('code', '[No Error Code]')}} - {{error.get('detail', '[No error detail]')}}<br>
+    {% endfor %}
     {% endif %}
   </body>
 </html>
