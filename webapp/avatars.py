@@ -3,6 +3,7 @@ from webapp import app
 from flask import session, redirect, request, render_template
 import json, os, urllib, random
 from functools import wraps
+from operator import itemgetter
 import time
 import requests
 import inspect
@@ -57,7 +58,7 @@ def render_with_session(template, **kwargs):
             token_expires_in = None
     return render_template(template, token_expires_in=token_expires_in, **kwargs)
 
-def api_wrapper(api_response, site, response_path=None):
+def api_wrapper(api_response, site, response_path=None, response_getter=None, response_key='id'):
     """
     Handles an api response.
     If the api call was successful (response 2xx or 3xx), returns api json data
@@ -65,19 +66,20 @@ def api_wrapper(api_response, site, response_path=None):
     If the api call was not successful, renders error.
     """
     if api_response.status_code >= 200 and api_response.status_code < 400:
-        data = api_response.json()
         if response_path is not None:
-            if 'id' in data:
-                return redirect('{}?id={}'.format(response_path, data['id']))
+            if response_getter is not None:
+                try:
+                    data = response_getter(api_response.json())
+                    return redirect('{}?{}={}'.format(response_path, response_key, data))
+                except:
+                    return render_with_session("fail.html", site=site, error="The API was happy, but we can't deal with the api response.")
             else:
-                return render_with_session("fail.html", site=site, error="The API was happy, but we can't deal with the api_response.")
-        else:
-            return data
+                return redirect(response_path)
     else:
         try:
             data = api_response.json()
             if 'errors' in data:
-                return render_with_session("fail.html", site="/avatar_upload", errors=data['errors'])
+                return render_with_session("fail.html", site=site, errors=data['errors'])
         except:
             pass
         return render_with_session("fail.html", site=site, error="The API was not happy. Return code: {} - Return message: {}".format(error.code, error.reason))
@@ -244,9 +246,16 @@ def addavatar(token):
 @get_token()
 def deleteavatar(token):
     aid = request.args.get("id")
-    req = urllib.request.Request(url=api+"/avatar",method="DELETE",headers={"Authorization":"Bearer " + token})
-    resp = urllib.request.urlopen(req,data=urllib.parse.urlencode({"id":aid}).encode("utf8"))
-    return redirect("/avatars")
+    resp = requests.delete(
+            api+"/avatar",
+            data={
+                'id': aid,
+            },
+            headers={
+                "Authorization":"Bearer " + token,
+                }
+            )
+    return api_wrapper(resp, '/avatars', '/avatars')
 
 @app.route('/avatar_upload', methods=["GET"])
 @get_token()
@@ -284,7 +293,7 @@ def avatar_upload_post(token):
                 "Authorization":"Bearer " + token,
                 }
             )
-    return api_wrapper(resp, '/avatar_upload', '/avatar_details')
+    return api_wrapper(resp, '/avatar_upload', '/avatar_details', itemgetter('id'))
 
 @app.route('/delete_user',methods=["GET"])
 @get_token()
