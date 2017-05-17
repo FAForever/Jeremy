@@ -295,6 +295,46 @@ def avatar_upload_post(token):
             )
     return api_wrapper(resp, '/avatar_upload', '/avatar_details', itemgetter('id'))
 
+@app.route('/avatar_update', methods=["POST"])
+@get_token()
+def avatar_update_post(token):
+    if 'id' in request.args:
+        avatar_id = request.args.get('id', type=int)
+    else:
+        avatar_id = None
+
+    if avatar_id is None:
+        return render_with_session("fail.html", site="/avatars", error="You need to pass an avatar id (This shouldn't hapen!).")
+
+    if 'file' in request.files:
+        file = request.files['file']
+    else:
+        file = None
+
+    if 'tooltip' in request.form:
+        tooltip = request.form.get('tooltip')
+    else:
+        tooltip = None
+
+    if tooltip is None or tooltip == '' or len(tooltip) > 250:
+        return render_with_session("fail.html", site="/avatar_details?id={}".format(id), error="You need to set a tooltip that's between 1 and 250 characters.")
+
+    resp = requests.post(
+            api+"/avatar",
+            files={
+                'file': (file.filename, file),
+                } if file else None,
+            data={
+                'id': avatar_id,
+                'tooltip': tooltip,
+            },
+            headers={
+                "Authorization":"Bearer " + token,
+                }
+            )
+    return api_wrapper(resp, '/avatar_upload', '/avatar_details', itemgetter('id'))
+
+
 @app.route('/delete_user',methods=["GET"])
 @get_token()
 def deleteuser(token):

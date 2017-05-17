@@ -7,6 +7,15 @@
 <h4><img src="{{avatar[0]}}"></img>&nbsp;&nbsp;({{avatar[1]}}) - {{avatar[2]}}</h4>
 <br><br>
 
+<h4>Edit this avatar</h4>
+<form method="POST" action="/avatar_update?id={{avatar[1]}}" enctype="multipart/form-data">
+<table>
+	<tr><th>File</th><td><input name="file" type="file" accept="image/png"></td></tr>
+	<tr><th>Tooltip</th><td><input name="tooltip" cols="100" value="{{avatar[2]}}"></td></tr>
+	<tr><th></th><td><input type="Submit"></td></tr>
+</table>
+</form>
+
 <h4>Give this avatar to new users</h4>
 <form method="POST" action="/add_avatar?id={{avatar[1]}}">
 Usernames go here:
